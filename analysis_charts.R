@@ -14,6 +14,20 @@ pacman::p_load(
 data <- read_excel("2025_Global_Survey_on_Livelihoods_and_Economic_Inclusion_GSLEI_-_all_versions_-_English_-_2025-09-15-15-35-21 (1).xlsx")
 
 
+##Check if there are any duplications
+
+any(duplicated(data$country))
+
+
+data[duplicated(data$country) | duplicated(data$country, fromLast = TRUE), ]
+
+
+##Duplicates are India, DRC and Kenya
+##Note 2 - India and DRC sorted - Kenya needs 
+
+
+data <- data[!(data$country %in% c("Kenya", "Uganda")), ]
+
 
 ###Figure 1
 
@@ -22,7 +36,7 @@ data <- read_excel("2025_Global_Survey_on_Livelihoods_and_Economic_Inclusion_GSL
 table(data$country)
 length(unique(data$country))
 
-###There are soe countries coded more than once  DRC, Kenya
+###There are some countries coded more than once  DRC, Kenya
 
 ### 2019 111, 2021 123, 2023 132, 2025 63
 
@@ -161,7 +175,56 @@ figure4_2 <- waffle(
     axis.title.y = element_blank()
   )
 
+##Access to work
 
+#Question 8.1. -> Do forcibly displaced and stateless persons have access in practice to formal wage-earning employment, meaning the practical restrictions for refugees engaging in formal wage-earning employment are low or non-existent?
+
+table(data$`8.1.1 Refugees`)
+
+
+# Create percentage table for 8.1.1 Refugees
+refugee_employment <- data.frame(
+  category = names(table(data$`8.1.1 Refugees`)),
+  count = as.numeric(table(data$`8.1.1 Refugees`))
+)
+
+# Calculate percentages
+refugee_employment <- refugee_employment %>%
+  mutate(
+    percentage = round((count / sum(count)) * 100, 2),
+    pct_label = paste0(percentage, "%")
+  )
+
+# Display the table
+print(refugee_employment)
+
+# Create a bar chart with UNHCR theme
+refugee_chart <- ggplot(refugee_employment, 
+                        aes(x = reorder(category, percentage), 
+                            y = percentage)) +
+  geom_bar(stat = "identity", fill = "#0072BC") +  # UNHCR blue
+  geom_text(aes(label = pct_label), 
+            hjust = -0.1, 
+            size = 4) +
+  coord_flip() +
+  scale_y_continuous(limits = c(0, max(refugee_employment$percentage) * 1.15),
+                     labels = scales::percent_format(scale = 1)) +
+  theme_unhcr() +
+  labs(
+    title = "Access to Formal Wage Earning Employment in Practice\nfor Refugees",
+    x = NULL,
+    y = "Percentage of Countries",
+    caption = "Source: GSLEI Survey 2025"
+  )
+
+print(refugee_chart)
+
+# Optional: Export as PNG
+ggsave("refugee_employment_access.png", 
+       plot = refugee_chart, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
 
 ####Figure 5
 
@@ -243,3 +306,132 @@ figure5 <- ggplot(df_filtered, aes(x = reorder(Variable, Percentage), y = Percen
        y = NULL,
        caption="Note: Multiple answers possible")
 
+
+###legal right to work
+
+table(data$`4.1.1 Refugees`)
+
+table(data$`8.1.1 Refugees`)
+
+# Load required packages
+if(!require(pacman)) install.packages('pacman')
+
+pacman::p_load(
+  tidyverse, dplyr, ggplot2, unhcrthemes, scales, gt
+)
+
+# ============================================================================
+# 1. CREATE PERCENTAGE TABLES
+# ============================================================================
+
+# 4.1.1 Refugees - LEGAL RIGHT to wage earning employment
+legal_right <- data %>%
+  count(`4.1.1 Refugees`, name = "count") %>%
+  filter(!is.na(`4.1.1 Refugees`)) %>%
+  mutate(
+    percentage = round((count / sum(count)) * 100, 2),
+    category = "Legal Right",
+    .keep = "unused"
+  ) %>%
+  rename(access_level = `4.1.1 Refugees`)
+
+# 8.1.1 Refugees - PRACTICAL ACCESS to formal wage earning employment
+practical_access <- data %>%
+  count(`8.1.1 Refugees`, name = "count") %>%
+  filter(!is.na(`8.1.1 Refugees`)) %>%
+  mutate(
+    percentage = round((count / sum(count)) * 100, 2),
+    category = "In Practice",
+    .keep = "unused"
+  ) %>%
+  rename(access_level = `8.1.1 Refugees`)
+
+# Combine both for comparison
+comparison_table <- bind_rows(legal_right, practical_access)
+
+# Load required packages
+if(!require(pacman)) install.packages('pacman')
+
+pacman::p_load(
+  tidyverse, dplyr, ggplot2, unhcrthemes, scales
+)
+
+# ============================================================================
+# CREATE COMPARISON DATA
+# ============================================================================
+
+# Legal Right (4.1.1 Refugees)
+legal_right <- data %>%
+  count(`4.1.1 Refugees`, name = "count") %>%
+  filter(!is.na(`4.1.1 Refugees`)) %>%
+  mutate(
+    percentage = round((count / sum(count)) * 100, 2),
+    type = "Legal Right"
+  ) %>%
+  rename(access_level = `4.1.1 Refugees`)
+
+# Practical Access (8.1.1 Refugees)
+practical_access <- data %>%
+  count(`8.1.1 Refugees`, name = "count") %>%
+  filter(!is.na(`8.1.1 Refugees`)) %>%
+  mutate(
+    percentage = round((count / sum(count)) * 100, 2),
+    type = "In Practice"
+  ) %>%
+  rename(access_level = `8.1.1 Refugees`)
+
+# Combine
+comparison_data <- bind_rows(legal_right, practical_access)
+
+# ============================================================================
+# CREATE SIMPLE GROUPED BAR CHART
+# ============================================================================
+
+simple_chart <- ggplot(comparison_data, 
+                       aes(x = access_level, 
+                           y = percentage, 
+                           fill = type)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  geom_text(aes(label = paste0(percentage, "%")),
+            position = position_dodge(width = 0.7),
+            vjust = -0.4,
+            size = 3.5,
+            fontface = "bold") +
+  scale_fill_manual(
+    values = c("Legal Right" = "#0072BC", "In Practice" = "#D25A45"),
+    name = NULL
+  ) +
+  scale_y_continuous(
+    limits = c(0, 65),
+    labels = scales::percent_format(scale = 1)
+  ) +
+  coord_flip() +
+  theme_unhcr() +
+  labs(
+    title = "Legal Right vs In Practice Access to Employment",
+    x = NULL,
+    y = "Percentage (%)"
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10)
+  )
+
+print(simple_chart)
+
+# Save chart
+ggsave("legal_vs_practice_simple.png", 
+       plot = simple_chart, 
+       width = 10, 
+       height = 6, 
+       dpi = 300)
+
+
+# Assuming you have plots stored as p1, p2, p3, etc.
+
+ggsave("figure1.png", plot = figure1, width = 10, height = 6, dpi = 300)
+ggsave("figure3.png", plot = figure3, width = 10, height = 6, dpi = 300)
+ggsave("figure4_1.png", plot = figure4_1, width = 10, height = 6, dpi = 300)
+ggsave("figure4_2.png", plot = figure4_2, width = 10, height = 6, dpi = 300)
+ggsave("figure5.png", plot = figure5, width = 10, height = 6, dpi = 300)
