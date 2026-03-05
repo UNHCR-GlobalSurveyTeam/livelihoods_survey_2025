@@ -429,9 +429,3 @@ ggsave("legal_vs_practice_simple.png",
 
 
 # Assuming you have plots stored as p1, p2, p3, etc.
-
-ggsave("figure1.png", plot = figure1, width = 10, height = 6, dpi = 300)
-ggsave("figure3.png", plot = figure3, width = 10, height = 6, dpi = 300)
-ggsave("figure4_1.png", plot = figure4_1, width = 10, height = 6, dpi = 300)
-ggsave("figure4_2.png", plot = figure4_2, width = 10, height = 6, dpi = 300)
-ggsave("figure5.png", plot = figure5, width = 10, height = 6, dpi = 300)
